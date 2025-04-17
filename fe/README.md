@@ -1,40 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# 🧬 Run-on-Jungja
 
-## Getting Started
+한국 90년대생 필수 놀이 정자게임, 글로벌하게 다시 만나보자.
 
-First, run the development server:
+정자게임은 **정자 막대에 붙어 술래를 피하며 생존**하는 웹 기반 캐주얼 게임입니다.  
+7단계까지 점점 어려워지는 생존 챌린지를 통해 유저는 속도를 높이고, 점수를 획득하고, 순위 경쟁에 도전할 수 있습니다.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🎮 게임 소개
+
+- 유저는 **술래에게서 도망**치며 **정자 막대에 붙어 생존**해야 합니다.
+- **아이템을 먹을 때 속도가 증가하며**, 이는 단계가 올라가도 유지됩니다.
+- **막대기 사이를 자주 옮겨 다닐수록 점수 증가**하며, 이는 단계가 올라가도 유지됩니다.
+- 술래는 **유저만 잡을 수 있으며**, 로봇 플레이어는 시늉만 합니다.
+- **유저 인증 없이 닉네임만 입력**하면 누구나 플레이 가능합니다.
+
+---
+
+## 🧠 게임 규칙
+
+| 항목             | 설명                                                  |
+| ---------------- | ----------------------------------------------------- |
+| 생존 단계        | 총 7단계, 각 단계 생존 시간은 점점 증가               |
+| 정자 막대        | 1단계 5개 → 4단계 7개 → 6단계 9개                     |
+| 술래 수          | 1단계 1명 → 4단계 2명 → 6단계 3명                     |
+| 이동 속도        | 정자 막대 이동 시 점수 상승 (게임 전체 유지)          |
+| 아이템           | 속도 증가 전용 아이템 존재 (점수에는 영향 없음)       |
+| 정자 유지 타이머 | 유저/로봇 모두 **정자에 붙을 수 있는 시간 제한** 존재 |
+
+---
+
+## 🏃‍♂️ 점수 시스템
+
+```ts
+totalScore = (막대 이동 점수 합) + (단계 생존 보너스)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- 막대기 간 이동: 다른 막대로 옮길 때마다 +5점
+- 단계 생존 보너스: 단계별 +100점
+- 7단계: 생존 시간 × 2점
+- 속도 아이템: 점수에는 영향 없음
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+---
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+## 🧭 타이머 UI
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+- 유저 캐릭터 위에 정자 유지 **남은 시간 타이머** 표시
+- **각 로봇 위에도 타이머**가 표시되며, 새 막대에 붙을 때마다 갱신
+- 화면 오른쪽 상단에는 **유저의 현재 점수**가 실시간 표시됨
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🗣 단계별 영어 대사
 
-To learn more about Next.js, take a look at the following resources:
+| 단계  | 대사                                |
+| ----- | ----------------------------------- |
+| 1단계 | “Pfft, that was a piece of cake.”   |
+| 2단계 | “Okay, not bad at all!”             |
+| 3단계 | “Whoa, you’re pretty good!”         |
+| 4단계 | “Playing with you is actually fun!” |
+| 5단계 | “Look who’s got skills!”            |
+| 6단계 | “The king has returned!”            |
+| 7단계 | “Let’s see who the real winner is.” |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🏆 랭킹 시스템
 
-## Deploy on Vercel
+- 닉네임 입력(익명 가능)
+- 1위부터 30위까지 전체 순위표 공개
+- 자신의 현재 순위도 함께 표시
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+🥇 1위. 정자왕자 — 1475점
+🥈 2위. 막대도사 — 1410점
+...
+🎯 당신의 순위는 24위입니다! (점수: 895점)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+```
+
+## 🛠 기술 스택
+
+| 구성       | 기술                                           |
+| ---------- | ---------------------------------------------- |
+| 프론트엔드 | Next.js, Canvas API 또는 Pixi.js, Tailwind CSS |
+| 애니메이션 | Framer Motion, GSAP                            |
+| 백엔드     | Nest.js, MongoDB                               |
+| 배포       | Vercel (프론트), Render 또는 EC2 (백엔드)      |
+
+## 🛠 개발 나중에 추가할 것
+
+- 기존 정자가 마지막에는 움직이게 ㅋㅋ
