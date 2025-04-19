@@ -46,11 +46,25 @@ const Player = {
   },
 
   checkCollision(player: any, stick: any) {
+    const playerWidth = 10; // 조금만 잡자 (머리+몸 약간)
+    const playerHeight = 20;
+
+    const playerLeft = player.x - playerWidth / 2;
+    const playerRight = player.x + playerWidth / 2;
+    const playerTop = player.y - playerWidth / 2;
+    const playerBottom = player.y + playerHeight - playerWidth / 2;
+
+    const stickCollisionMargin = 5; // 막대 충돌 영역을 줄여주자
+    const stickLeft = stick.x - stick.width / 2 + stickCollisionMargin;
+    const stickRight = stick.x + stick.width / 2 - stickCollisionMargin;
+    const stickTop = stick.y - stick.height / 2 + stickCollisionMargin;
+    const stickBottom = stick.y + stick.height / 2 - stickCollisionMargin;
+
     return (
-      player.x < stick.x + stick.width / 2 &&
-      player.x > stick.x - stick.width / 2 &&
-      player.y < stick.y + stick.height / 2 &&
-      player.y > stick.y - stick.height / 2
+      playerRight > stickLeft &&
+      playerLeft < stickRight &&
+      playerBottom > stickTop &&
+      playerTop < stickBottom
     );
   }
 };

@@ -4,14 +4,14 @@ const Stick = {
     stick: {
       x: number;
       y: number;
-      angle: number;
       width: number;
       height: number;
+      angle: number;
     }
   ) {
     ctx.save(); // 현재 캔버스 상태 저장
     ctx.translate(stick.x, stick.y); // 중심 이동
-    ctx.rotate(stick.angle); // 각도 회전
+    ctx.rotate(stick.angle);
 
     ctx.fillStyle = "brown";
     ctx.fillRect(

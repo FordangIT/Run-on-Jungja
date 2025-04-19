@@ -7,7 +7,7 @@ import GameCanvas from "@/components/GameCanvas";
 export default function Game() {
   const searchParams = useSearchParams();
   const nickname = searchParams.get("nickname") || "플레이어";
-  const [score, setScore] = useState(0);
+  const [score, setScore] = useState<number>(0);
 
   // 막대기 설정
   const stickHeight = 20;
@@ -37,7 +37,9 @@ export default function Game() {
       <p className="text-md mb-2">Score: {score}</p>
       <GameCanvas
         stickList={stickList.current}
-        onScore={(s) => setScore((prev) => prev + s)}
+        onScore={(s) =>
+          setScore((prev) => (typeof prev === "number" ? prev + s : s))
+        }
       />
     </div>
   );

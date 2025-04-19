@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
 import Player from "./Player";
 import Stick from "./Stick";
+import StickTimer from "./StickTimer"; // ✅ 추가
 
 interface GameCanvasProps {
-  stickList: { id: number; x: number; y: number }[];
+  stickList: { id: number; x: number; y: number; angle: number }[];
   onScore: (score: number) => void;
 }
 
@@ -17,7 +18,10 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
     stickId: null as number | null
   });
 
-  const stickTimers = useRef<Record<number, number>>({});
+  const stickTimers = useRef<
+    Record<number, { start: number; duration: number }>
+  >({});
+
   const prevStickIdRef = useRef<number | null>(null);
 
   const centerX = 150;
@@ -40,45 +44,70 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       let currentStickId: number | null = null;
 
       for (const stick of stickList) {
+        const screenX = centerX + stick.x;
+        const screenY = centerY + stick.y;
+
+        // Stick 그리기
         Stick.draw(ctx, {
           ...stick,
-          x: centerX + stick.x,
-          y: centerY + stick.y,
+          x: screenX,
+          y: screenY,
           width: stickWidth,
           height: stickHeight,
-          angle: stick.angle // ⭐ 추가!
+          angle: stick.angle
         });
+
+        // 충돌 체크
         if (
           Player.checkCollision(player, {
-            x: centerX + stick.x,
-            y: centerY + stick.y,
+            x: screenX,
+            y: screenY,
             width: stickWidth,
             height: stickHeight
           })
         ) {
           isTouching = true;
           currentStickId = stick.id;
+
+          // 타이머 등록 (재접촉 시 초기화)
+          if (
+            !stickTimers.current[currentStickId] ||
+            player.stickId !== currentStickId
+          ) {
+            stickTimers.current[currentStickId] = {
+              start: timestamp,
+              duration: 5000
+            };
+          }
+
+          const timer = stickTimers.current[currentStickId];
+          const elapsed = timestamp - timer.start;
+          const progress = Math.min(elapsed / timer.duration, 1);
+
+          // 타이머 그리기
+          StickTimer.draw(ctx, {
+            x: screenX,
+            y: screenY,
+            width: stickWidth,
+            height: stickHeight,
+            progress
+          });
+
+          // 타이머 만료 → 강제 떨어뜨림
+          if (progress >= 1) {
+            player.isSticking = false;
+            player.stickId = null;
+          }
         }
       }
 
       if (isTouching && currentStickId !== null) {
-        const endTime = stickTimers.current[currentStickId];
+        player.isSticking = true;
+        player.stickId = currentStickId;
 
-        if (player.stickId !== currentStickId) {
-          // 점수는 직전 막대기가 아니면 줌
-          if (prevStickIdRef.current !== currentStickId) {
-            onScore(100);
-          }
-          stickTimers.current[currentStickId] = timestamp + 3000;
-          player.isSticking = true;
-          player.stickId = currentStickId;
+        if (player.stickId !== prevStickIdRef.current) {
+          onScore(10);
           prevStickIdRef.current = currentStickId;
-        } else if (endTime && timestamp < endTime) {
-          player.isSticking = true;
-          player.stickId = currentStickId;
-        } else {
-          player.isSticking = false;
-          player.stickId = null;
         }
       } else {
         player.isSticking = false;
@@ -93,17 +122,16 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
     return () => cancelAnimationFrame(animationFrameId);
   }, [stickList, onScore]);
 
+  // 키보드 이동
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const player = playerRef.current;
 
-      // 이동은 항상 가능
       if (e.key === "ArrowUp") player.y -= player.speed;
       if (e.key === "ArrowDown") player.y += player.speed;
       if (e.key === "ArrowLeft") player.x -= player.speed;
       if (e.key === "ArrowRight") player.x += player.speed;
 
-      // 스페이스: 수동으로 떨어지기 가능
       if (e.key === " ") {
         player.isSticking = false;
         player.stickId = null;
