@@ -1,7 +1,8 @@
+// Stick.ts (그대로)
+
 import { useEffect, useRef } from "react";
 import Player from "./Player";
 import Stick from "./Stick";
-import StickTimer from "./StickTimer"; // ✅ 추가
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -43,57 +44,84 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       let isTouching = false;
       let currentStickId: number | null = null;
 
-      for (const stick of stickList) {
-        const screenX = centerX + stick.x;
-        const screenY = centerY + stick.y;
+      if (!player.isSticking) {
+        // ❗ 안 붙어있을 때만 충돌 체크
+        for (const stick of stickList) {
+          const screenX = centerX + stick.x;
+          const screenY = centerY + stick.y;
 
-        // Stick 그리기
-        Stick.draw(ctx, {
-          ...stick,
-          x: screenX,
-          y: screenY,
-          width: stickWidth,
-          height: stickHeight,
-          angle: stick.angle
-        });
-
-        // 충돌 체크
-        if (
-          Player.checkCollision(player, {
-            x: screenX,
-            y: screenY,
-            width: stickWidth,
-            height: stickHeight
-          })
-        ) {
-          isTouching = true;
-          currentStickId = stick.id;
-
-          // 타이머 등록 (재접촉 시 초기화)
-          if (
-            !stickTimers.current[currentStickId] ||
-            player.stickId !== currentStickId
-          ) {
-            stickTimers.current[currentStickId] = {
-              start: timestamp,
-              duration: 5000
-            };
-          }
-
-          const timer = stickTimers.current[currentStickId];
-          const elapsed = timestamp - timer.start;
-          const progress = Math.min(elapsed / timer.duration, 1);
-
-          // 타이머 그리기
-          StickTimer.draw(ctx, {
+          // Stick 그리기
+          Stick.draw(ctx, {
+            ...stick,
             x: screenX,
             y: screenY,
             width: stickWidth,
             height: stickHeight,
-            progress
+            angle: stick.angle
           });
 
-          // 타이머 만료 → 강제 떨어뜨림
+          // 충돌 체크
+          if (
+            Player.checkCollision(player, {
+              x: screenX,
+              y: screenY,
+              width: stickWidth,
+              height: stickHeight
+            })
+          ) {
+            isTouching = true;
+            currentStickId = stick.id;
+          }
+        }
+      }
+
+      if (isTouching && currentStickId !== null) {
+        if (currentStickId !== prevStickIdRef.current) {
+          // 새로운 막대에 붙음
+          player.isSticking = true;
+          player.stickId = currentStickId;
+          stickTimers.current[currentStickId] = {
+            start: timestamp,
+            duration: 5000
+          };
+          onScore(10);
+          prevStickIdRef.current = currentStickId;
+        } else {
+          // 직전 막대에 다시 붙음
+          player.isSticking = false;
+          player.stickId = null;
+        }
+      } else {
+        for (const stick of stickList) {
+          const screenX = centerX + stick.x;
+          const screenY = centerY + stick.y;
+
+          Stick.draw(ctx, {
+            ...stick,
+            x: screenX,
+            y: screenY,
+            width: stickWidth,
+            height: stickHeight,
+            angle: stick.angle
+          });
+        }
+      }
+      // Player 그리기
+      Player.draw(ctx, player);
+
+      // 플레이어 위에 타이머 그리기
+      if (player.isSticking && player.stickId !== null) {
+        const timer = stickTimers.current[player.stickId];
+        if (timer) {
+          const elapsed = timestamp - timer.start;
+          const progress = Math.min(elapsed / timer.duration, 1);
+
+          ctx.save();
+          ctx.translate(player.x, player.y);
+          ctx.fillStyle = "blue";
+          ctx.fillRect(-20, -30, 40 * (1 - progress), 6);
+          ctx.restore();
+
           if (progress >= 1) {
             player.isSticking = false;
             player.stickId = null;
@@ -101,20 +129,6 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         }
       }
 
-      if (isTouching && currentStickId !== null) {
-        player.isSticking = true;
-        player.stickId = currentStickId;
-
-        if (player.stickId !== prevStickIdRef.current) {
-          onScore(10);
-          prevStickIdRef.current = currentStickId;
-        }
-      } else {
-        player.isSticking = false;
-        player.stickId = null;
-      }
-
-      Player.draw(ctx, player);
       animationFrameId = requestAnimationFrame(draw);
     };
 
