@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Player from "./Player";
 import Stick from "./Stick";
+import Item from "./Item"; // ✅ 아이템 추가
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -21,7 +22,12 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
     Record<number, { start: number; duration: number }>
   >({});
   const prevStickIdRef = useRef<number | null>(null);
-  const wasDetached = useRef(false); // ✅ 떨어진 적 있는지 추적
+  const wasDetached = useRef(false);
+
+  const [itemList, setItemList] = useState<
+    { id: number; x: number; y: number; speed: number }[]
+  >([]);
+  const itemIdRef = useRef(0);
 
   const centerX = 150;
   const centerY = 150;
@@ -54,7 +60,6 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
           angle: stick.angle
         });
 
-        // 충돌 체크
         if (
           Player.checkCollision(player, {
             x: screenX,
@@ -69,13 +74,10 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
 
       if (touchedStickId !== null) {
         if (player.stickId === touchedStickId && !wasDetached.current) {
-          // ✅ 같은 stick 안에서 계속 머무르는 중
           player.isSticking = true;
         } else {
           if (wasDetached.current) {
-            // ✅ 떨어졌다가 다시 붙은 경우
             if (touchedStickId !== prevStickIdRef.current) {
-              // 다른 stick에 붙음 (초록색, 타이머 새로 시작)
               player.isSticking = true;
               player.stickId = touchedStickId;
               stickTimers.current[touchedStickId] = {
@@ -86,12 +88,10 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
               prevStickIdRef.current = touchedStickId;
               wasDetached.current = false;
             } else {
-              // 같은 stick에 다시 붙음 (초록색❌ 타이머❌)
               player.isSticking = false;
               player.stickId = null;
             }
           } else {
-            // 처음부터 새로운 stick에 붙는 경우
             player.isSticking = true;
             player.stickId = touchedStickId;
             stickTimers.current[touchedStickId] = {
@@ -103,16 +103,14 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
           }
         }
       } else {
-        // ❗ 충돌한 stick 없음 (떨어짐)
         player.isSticking = false;
         player.stickId = null;
         wasDetached.current = true;
       }
 
-      // Player 그리기
+      // Player
       Player.draw(ctx, player);
 
-      // 플레이어 머리 위에 타이머 그리기
       if (player.isSticking && player.stickId !== null) {
         const timer = stickTimers.current[player.stickId];
         if (timer) {
@@ -126,7 +124,6 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
           ctx.restore();
 
           if (progress >= 1) {
-            // 타이머 끝났으면 강제 떨어뜨림
             player.isSticking = false;
             player.stickId = null;
             wasDetached.current = true;
@@ -134,12 +131,55 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         }
       }
 
+      // 아이템
+      setItemList(
+        (prev) =>
+          prev
+            .map((item) => ({
+              ...item,
+              y: item.y + item.speed
+            }))
+            .filter((item) => item.y < canvas.height + 20) // 화면 아래로 떨어진 건 삭제
+      );
+
+      itemList.forEach((item) => {
+        Item.draw(ctx, item);
+
+        // 아이템과 플레이어 충돌 체크
+        const dx = player.x - item.x;
+        const dy = player.y - item.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 15) {
+          // 충돌하면
+          player.speed += 0.5; // 속도 업그레이드
+          setItemList((prev) => prev.filter((i) => i.id !== item.id));
+        }
+      });
+
       animationFrameId = requestAnimationFrame(draw);
     };
 
     animationFrameId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [stickList, onScore]);
+  }, [stickList, onScore, itemList]);
+
+  // 랜덤 아이템 생성
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        const randomX = Math.random() * 280 + 10; // x축 랜덤
+        const randomSpeed = Math.random() * 1 + 1.5; // 속도 1.5 ~ 2.5
+
+        setItemList((prev) => [
+          ...prev,
+          { id: itemIdRef.current++, x: randomX, y: -10, speed: randomSpeed }
+        ]);
+      }
+    }, 6000); // 4초마다 한 번 생성
+
+    return () => clearInterval(interval);
+  }, []);
 
   // 키보드 이동
   useEffect(() => {
