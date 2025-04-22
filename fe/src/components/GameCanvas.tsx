@@ -1,7 +1,11 @@
+// GameCanvas.tsx (stick 점유 체크 - Player + Robot 전체 적용 버전)
+
 import { useEffect, useRef, useState } from "react";
 import Player from "./Player";
 import Stick from "./Stick";
-import Item from "./Item"; // ✅ 아이템 추가
+import Tagger from "./Tagger";
+import Robot from "./Robot";
+import Item from "./Item";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -10,13 +14,41 @@ interface GameCanvasProps {
 
 export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
   const playerRef = useRef({
     x: 50,
     y: 50,
     speed: 2,
     isSticking: false,
-    stickId: null as number | null
+    stickId: null as number | null,
+    isCaught: false
   });
+
+  const taggerRef = useRef({
+    x: 250,
+    y: 250,
+    speed: 1.2,
+    targetType: null as "player" | "robot" | null,
+    targetId: null as number | null
+  });
+
+  const [robots, setRobots] = useState(
+    Array.from({ length: 2 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 280 + 10,
+      y: Math.random() * 280 + 10,
+      speed: 1.5,
+      isSticking: false,
+      stickId: null as number | null,
+      stickTimer: 0,
+      targetStickId: null as number | null
+    }))
+  );
+
+  const [itemList, setItemList] = useState<
+    { id: number; x: number; y: number; speed: number }[]
+  >([]);
+  const itemIdRef = useRef(0);
 
   const stickTimers = useRef<
     Record<number, { start: number; duration: number }>
@@ -24,15 +56,42 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   const prevStickIdRef = useRef<number | null>(null);
   const wasDetached = useRef(false);
 
-  const [itemList, setItemList] = useState<
-    { id: number; x: number; y: number; speed: number }[]
-  >([]);
-  const itemIdRef = useRef(0);
-
   const centerX = 150;
   const centerY = 150;
   const stickWidth = 20;
   const stickHeight = 40;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() < 0.3) {
+        const randomX = Math.random() * 280 + 10;
+        const randomSpeed = Math.random() * 1 + 1.5;
+        setItemList((prev) => [
+          ...prev,
+          { id: itemIdRef.current++, x: randomX, y: -10, speed: randomSpeed }
+        ]);
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const player = playerRef.current;
+      if (player.isCaught) return;
+      if (e.key === "ArrowUp") player.y -= player.speed;
+      if (e.key === "ArrowDown") player.y += player.speed;
+      if (e.key === "ArrowLeft") player.x -= player.speed;
+      if (e.key === "ArrowRight") player.x += player.speed;
+      if (e.key === " ") {
+        player.isSticking = false;
+        player.stickId = null;
+        wasDetached.current = true;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -43,14 +102,23 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
 
     const draw = (timestamp: number) => {
       const player = playerRef.current;
+      const tagger = taggerRef.current;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (player.isCaught) {
+        Player.draw(ctx, { ...player, isCaught: true });
+        robots.forEach((robot) => Robot.draw(ctx, robot));
+        itemList.forEach((item) => Item.draw(ctx, item));
+        Tagger.draw(ctx, tagger);
+        cancelAnimationFrame(animationFrameId);
+        return;
+      }
 
       let touchedStickId: number | null = null;
 
       for (const stick of stickList) {
         const screenX = centerX + stick.x;
         const screenY = centerY + stick.y;
-
         Stick.draw(ctx, {
           ...stick,
           x: screenX,
@@ -59,7 +127,6 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
           height: stickHeight,
           angle: stick.angle
         });
-
         if (
           Player.checkCollision(player, {
             x: screenX,
@@ -72,12 +139,36 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         }
       }
 
+      const isStickOccupied = (stickId: number | null) => {
+        if (stickId === null) return false;
+        const occupiedByRobot = robots.some(
+          (robot) => robot.stickId === stickId
+        );
+        const occupiedByPlayer = playerRef.current.stickId === stickId;
+        return occupiedByRobot || occupiedByPlayer;
+      };
+
       if (touchedStickId !== null) {
-        if (player.stickId === touchedStickId && !wasDetached.current) {
-          player.isSticking = true;
-        } else {
-          if (wasDetached.current) {
-            if (touchedStickId !== prevStickIdRef.current) {
+        if (!robots.some((robot) => robot.stickId === touchedStickId)) {
+          if (player.stickId === touchedStickId && !wasDetached.current) {
+            player.isSticking = true;
+          } else {
+            if (wasDetached.current) {
+              if (touchedStickId !== prevStickIdRef.current) {
+                player.isSticking = true;
+                player.stickId = touchedStickId;
+                stickTimers.current[touchedStickId] = {
+                  start: timestamp,
+                  duration: 5000
+                };
+                onScore(10);
+                prevStickIdRef.current = touchedStickId;
+                wasDetached.current = false;
+              } else {
+                player.isSticking = false;
+                player.stickId = null;
+              }
+            } else {
               player.isSticking = true;
               player.stickId = touchedStickId;
               stickTimers.current[touchedStickId] = {
@@ -86,21 +177,11 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
               };
               onScore(10);
               prevStickIdRef.current = touchedStickId;
-              wasDetached.current = false;
-            } else {
-              player.isSticking = false;
-              player.stickId = null;
             }
-          } else {
-            player.isSticking = true;
-            player.stickId = touchedStickId;
-            stickTimers.current[touchedStickId] = {
-              start: timestamp,
-              duration: 5000
-            };
-            onScore(10);
-            prevStickIdRef.current = touchedStickId;
           }
+        } else {
+          player.isSticking = false;
+          player.stickId = null;
         }
       } else {
         player.isSticking = false;
@@ -108,7 +189,6 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         wasDetached.current = true;
       }
 
-      // Player
       Player.draw(ctx, player);
 
       if (player.isSticking && player.stickId !== null) {
@@ -116,13 +196,11 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         if (timer) {
           const elapsed = timestamp - timer.start;
           const progress = Math.min(elapsed / timer.duration, 1);
-
           ctx.save();
           ctx.translate(player.x, player.y);
           ctx.fillStyle = "blue";
           ctx.fillRect(-20, -30, 40 * (1 - progress), 6);
           ctx.restore();
-
           if (progress >= 1) {
             player.isSticking = false;
             player.stickId = null;
@@ -131,76 +209,156 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         }
       }
 
-      // 아이템
-      setItemList(
-        (prev) =>
-          prev
-            .map((item) => ({
-              ...item,
-              y: item.y + item.speed
-            }))
-            .filter((item) => item.y < canvas.height + 20) // 화면 아래로 떨어진 건 삭제
+      setItemList((prev) =>
+        prev
+          .map((item) => ({ ...item, y: item.y + item.speed }))
+          .filter((item) => item.y < canvas.height + 20)
       );
-
       itemList.forEach((item) => {
         Item.draw(ctx, item);
-
-        // 아이템과 플레이어 충돌 체크
         const dx = player.x - item.x;
         const dy = player.y - item.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < 15) {
-          // 충돌하면
-          player.speed += 0.5; // 속도 업그레이드
+        if (Math.sqrt(dx * dx + dy * dy) < 15) {
+          player.speed += 0.5;
           setItemList((prev) => prev.filter((i) => i.id !== item.id));
         }
       });
+
+      setRobots((prev) =>
+        prev.map((robot) => {
+          if (robot.isSticking) {
+            const elapsed = timestamp - robot.stickTimer;
+            if (elapsed > 5000) {
+              return {
+                ...robot,
+                isSticking: false,
+                stickId: null,
+                targetStickId: null
+              };
+            }
+            return robot;
+          } else {
+            if (robot.targetStickId === null) {
+              const availableSticks = stickList.filter(
+                (stick) => !isStickOccupied(stick.id)
+              );
+              if (availableSticks.length > 0) {
+                const randomStick =
+                  availableSticks[
+                    Math.floor(Math.random() * availableSticks.length)
+                  ];
+                return { ...robot, targetStickId: randomStick.id };
+              }
+            } else {
+              const targetStick = stickList.find(
+                (s) => s.id === robot.targetStickId
+              );
+              if (targetStick) {
+                const targetX = centerX + targetStick.x;
+                const targetY = centerY + targetStick.y;
+                const dx = targetX - robot.x;
+                const dy = targetY - robot.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < 5) {
+                  if (!isStickOccupied(robot.targetStickId)) {
+                    return {
+                      ...robot,
+                      x: targetX,
+                      y: targetY,
+                      isSticking: true,
+                      stickId: robot.targetStickId,
+                      stickTimer: timestamp
+                    };
+                  } else {
+                    return { ...robot, targetStickId: null };
+                  }
+                } else {
+                  return {
+                    ...robot,
+                    x: robot.x + (dx / distance) * robot.speed,
+                    y: robot.y + (dy / distance) * robot.speed
+                  };
+                }
+              }
+            }
+          }
+          return robot;
+        })
+      );
+
+      robots.forEach((robot) => Robot.draw(ctx, robot));
+
+      /*** ✨✨ 여기부터 술래(Tagger) 움직임 추가 ✨✨ ***/
+      const findNewTarget = () => {
+        const candidates = [
+          ...(player.isSticking
+            ? []
+            : [{ type: "player" as const, id: 0, x: player.x, y: player.y }]),
+          ...robots
+            .filter((robot) => !robot.isSticking)
+            .map((robot) => ({
+              type: "robot" as const,
+              id: robot.id,
+              x: robot.x,
+              y: robot.y
+            }))
+        ];
+        if (candidates.length === 0) return;
+
+        candidates.sort((a, b) => {
+          const da = Math.hypot(a.x - tagger.x, a.y - tagger.y);
+          const db = Math.hypot(b.x - tagger.x, b.y - tagger.y);
+          return da - db;
+        });
+
+        tagger.targetType = candidates[0].type;
+        tagger.targetId = candidates[0].id;
+      };
+
+      let targetX: number | null = null;
+      let targetY: number | null = null;
+
+      if (tagger.targetType === "player" && !player.isSticking) {
+        targetX = player.x;
+        targetY = player.y;
+      } else if (tagger.targetType === "robot") {
+        const targetRobot = robots.find((r) => r.id === tagger.targetId);
+        if (targetRobot && !targetRobot.isSticking) {
+          targetX = targetRobot.x;
+          targetY = targetRobot.y;
+        }
+      }
+
+      if (targetX === null || targetY === null) {
+        findNewTarget();
+      } else {
+        const dx = targetX - tagger.x;
+        const dy = targetY - tagger.y;
+        const distance = Math.hypot(dx, dy);
+
+        if (distance > 1) {
+          tagger.x += (dx / distance) * tagger.speed;
+          tagger.y += (dy / distance) * tagger.speed;
+        }
+
+        if (distance < 15) {
+          if (tagger.targetType === "player") {
+            player.isCaught = true;
+          }
+          tagger.targetType = null;
+          tagger.targetId = null;
+        }
+      }
+
+      Tagger.draw(ctx, tagger);
+      /*** ✨✨ 술래(Tagger) 움직임 끝 ✨✨ ***/
 
       animationFrameId = requestAnimationFrame(draw);
     };
 
     animationFrameId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [stickList, onScore, itemList]);
-
-  // 랜덤 아이템 생성
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (Math.random() < 0.3) {
-        const randomX = Math.random() * 280 + 10; // x축 랜덤
-        const randomSpeed = Math.random() * 1 + 1.5; // 속도 1.5 ~ 2.5
-
-        setItemList((prev) => [
-          ...prev,
-          { id: itemIdRef.current++, x: randomX, y: -10, speed: randomSpeed }
-        ]);
-      }
-    }, 6000); // 4초마다 한 번 생성
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // 키보드 이동
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const player = playerRef.current;
-
-      if (e.key === "ArrowUp") player.y -= player.speed;
-      if (e.key === "ArrowDown") player.y += player.speed;
-      if (e.key === "ArrowLeft") player.x -= player.speed;
-      if (e.key === "ArrowRight") player.x += player.speed;
-
-      if (e.key === " ") {
-        player.isSticking = false;
-        player.stickId = null;
-        wasDetached.current = true;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [stickList, onScore, robots, itemList]);
 
   return (
     <canvas
