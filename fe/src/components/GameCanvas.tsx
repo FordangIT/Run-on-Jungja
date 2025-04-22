@@ -1,5 +1,3 @@
-// Stick.ts (그대로)
-
 import { useEffect, useRef } from "react";
 import Player from "./Player";
 import Stick from "./Stick";
@@ -22,8 +20,8 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   const stickTimers = useRef<
     Record<number, { start: number; duration: number }>
   >({});
-
   const prevStickIdRef = useRef<number | null>(null);
+  const wasDetached = useRef(false); // ✅ 떨어진 적 있는지 추적
 
   const centerX = 150;
   const centerY = 150;
@@ -41,75 +39,80 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       const player = playerRef.current;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      let isTouching = false;
-      let currentStickId: number | null = null;
+      let touchedStickId: number | null = null;
 
-      if (!player.isSticking) {
-        // ❗ 안 붙어있을 때만 충돌 체크
-        for (const stick of stickList) {
-          const screenX = centerX + stick.x;
-          const screenY = centerY + stick.y;
+      for (const stick of stickList) {
+        const screenX = centerX + stick.x;
+        const screenY = centerY + stick.y;
 
-          // Stick 그리기
-          Stick.draw(ctx, {
-            ...stick,
+        Stick.draw(ctx, {
+          ...stick,
+          x: screenX,
+          y: screenY,
+          width: stickWidth,
+          height: stickHeight,
+          angle: stick.angle
+        });
+
+        // 충돌 체크
+        if (
+          Player.checkCollision(player, {
             x: screenX,
             y: screenY,
             width: stickWidth,
-            height: stickHeight,
-            angle: stick.angle
-          });
+            height: stickHeight
+          })
+        ) {
+          touchedStickId = stick.id;
+        }
+      }
 
-          // 충돌 체크
-          if (
-            Player.checkCollision(player, {
-              x: screenX,
-              y: screenY,
-              width: stickWidth,
-              height: stickHeight
-            })
-          ) {
-            isTouching = true;
-            currentStickId = stick.id;
+      if (touchedStickId !== null) {
+        if (player.stickId === touchedStickId && !wasDetached.current) {
+          // ✅ 같은 stick 안에서 계속 머무르는 중
+          player.isSticking = true;
+        } else {
+          if (wasDetached.current) {
+            // ✅ 떨어졌다가 다시 붙은 경우
+            if (touchedStickId !== prevStickIdRef.current) {
+              // 다른 stick에 붙음 (초록색, 타이머 새로 시작)
+              player.isSticking = true;
+              player.stickId = touchedStickId;
+              stickTimers.current[touchedStickId] = {
+                start: timestamp,
+                duration: 5000
+              };
+              onScore(10);
+              prevStickIdRef.current = touchedStickId;
+              wasDetached.current = false;
+            } else {
+              // 같은 stick에 다시 붙음 (초록색❌ 타이머❌)
+              player.isSticking = false;
+              player.stickId = null;
+            }
+          } else {
+            // 처음부터 새로운 stick에 붙는 경우
+            player.isSticking = true;
+            player.stickId = touchedStickId;
+            stickTimers.current[touchedStickId] = {
+              start: timestamp,
+              duration: 5000
+            };
+            onScore(10);
+            prevStickIdRef.current = touchedStickId;
           }
         }
-      }
-
-      if (isTouching && currentStickId !== null) {
-        if (currentStickId !== prevStickIdRef.current) {
-          // 새로운 막대에 붙음
-          player.isSticking = true;
-          player.stickId = currentStickId;
-          stickTimers.current[currentStickId] = {
-            start: timestamp,
-            duration: 5000
-          };
-          onScore(10);
-          prevStickIdRef.current = currentStickId;
-        } else {
-          // 직전 막대에 다시 붙음
-          player.isSticking = false;
-          player.stickId = null;
-        }
       } else {
-        for (const stick of stickList) {
-          const screenX = centerX + stick.x;
-          const screenY = centerY + stick.y;
-
-          Stick.draw(ctx, {
-            ...stick,
-            x: screenX,
-            y: screenY,
-            width: stickWidth,
-            height: stickHeight,
-            angle: stick.angle
-          });
-        }
+        // ❗ 충돌한 stick 없음 (떨어짐)
+        player.isSticking = false;
+        player.stickId = null;
+        wasDetached.current = true;
       }
+
       // Player 그리기
       Player.draw(ctx, player);
 
-      // 플레이어 위에 타이머 그리기
+      // 플레이어 머리 위에 타이머 그리기
       if (player.isSticking && player.stickId !== null) {
         const timer = stickTimers.current[player.stickId];
         if (timer) {
@@ -123,8 +126,10 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
           ctx.restore();
 
           if (progress >= 1) {
+            // 타이머 끝났으면 강제 떨어뜨림
             player.isSticking = false;
             player.stickId = null;
+            wasDetached.current = true;
           }
         }
       }
@@ -149,6 +154,7 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       if (e.key === " ") {
         player.isSticking = false;
         player.stickId = null;
+        wasDetached.current = true;
       }
     };
 
