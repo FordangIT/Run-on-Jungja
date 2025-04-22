@@ -1,7 +1,8 @@
 // components/Item.ts
+import { ItemType } from "@/types/GameTypes";
 
 const Item = {
-  draw(ctx: CanvasRenderingContext2D, item: any) {
+  draw(ctx: CanvasRenderingContext2D, item: ItemType) {
     ctx.save();
     ctx.translate(item.x, item.y);
 

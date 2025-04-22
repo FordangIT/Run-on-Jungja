@@ -1,5 +1,10 @@
+import {
+  PlayerCollisionType,
+  PlayerType,
+  StickCollisionType
+} from "@/types/GameTypes";
 const Player = {
-  draw(ctx: CanvasRenderingContext2D, player: any) {
+  draw(ctx: CanvasRenderingContext2D, player: PlayerType) {
     ctx.save();
     ctx.translate(player.x, player.y);
 
@@ -45,7 +50,7 @@ const Player = {
     ctx.restore();
   },
 
-  checkCollision(player: any, stick: any) {
+  checkCollision(player: PlayerCollisionType, stick: StickCollisionType) {
     const playerWidth = 10; // 조금만 잡자 (머리+몸 약간)
     const playerHeight = 20;
 
