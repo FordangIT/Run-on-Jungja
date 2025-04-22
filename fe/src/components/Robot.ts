@@ -1,7 +1,7 @@
 // components/Robot.ts
-
+import { RobotType } from "@/types/GameTypes";
 const Robot = {
-  draw(ctx: CanvasRenderingContext2D, robot: any) {
+  draw(ctx: CanvasRenderingContext2D, robot: RobotType) {
     ctx.save();
     ctx.translate(robot.x, robot.y);
 

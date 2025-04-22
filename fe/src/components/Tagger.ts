@@ -1,7 +1,8 @@
 // components/Tagger.ts
+import { TaggerType } from "@/types/GameTypes";
 
 const Tagger = {
-  draw(ctx: CanvasRenderingContext2D, tagger: any) {
+  draw(ctx: CanvasRenderingContext2D, tagger: TaggerType) {
     ctx.save();
     ctx.translate(tagger.x, tagger.y);
 
