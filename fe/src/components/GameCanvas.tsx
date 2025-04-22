@@ -6,6 +6,7 @@ import Stick from "./Stick";
 import Tagger from "./Tagger";
 import Robot from "./Robot";
 import Item from "./Item";
+import SwipeController from "./SwipeController";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -13,6 +14,8 @@ interface GameCanvasProps {
 }
 
 export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
+  const [isGameOver, setIsGameOver] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const playerRef = useRef({
@@ -344,6 +347,7 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         if (distance < 15) {
           if (tagger.targetType === "player") {
             player.isCaught = true;
+            setIsGameOver(true); // ✨ 게임 오버 상태 변경
           }
           tagger.targetType = null;
           tagger.targetId = null;
@@ -361,11 +365,30 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   }, [stickList, onScore, robots, itemList]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={300}
-      height={300}
-      className="rounded-full border-[6px] border-amber-700 shadow-lg w-[300px] h-[300px] mx-auto"
-    />
+    <div className="relative w-[300px] h-[300px] mx-auto">
+      <canvas
+        ref={canvasRef}
+        width={300}
+        height={300}
+        className="rounded-full border-[6px] border-amber-700 shadow-lg w-[300px] h-[300px]"
+      />
+      <SwipeController
+        onSwipeUp={() => (playerRef.current.y -= playerRef.current.speed)}
+        onSwipeDown={() => (playerRef.current.y += playerRef.current.speed)}
+        onSwipeLeft={() => (playerRef.current.x -= playerRef.current.speed)}
+        onSwipeRight={() => (playerRef.current.x += playerRef.current.speed)}
+      />
+      {isGameOver && (
+        <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-10">
+          <h1 className="text-white text-2xl font-bold mb-4">Game Over</h1>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-white text-black px-4 py-2 rounded"
+          >
+            다시 시작
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
