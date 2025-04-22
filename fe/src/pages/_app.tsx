@@ -18,7 +18,13 @@ export default function App({ Component, pageProps }: AppProps) {
           gtag('config', 'G-49J4Z79J4K');
         `}
       </Script>
-      <Component {...pageProps} />;
+      {/* Google AdSense 스크립트 삽입 */}
+      <Script
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6499853936822237"
+        strategy="afterInteractive"
+        crossOrigin="anonymous"
+      />
+      <Component {...pageProps} />
     </>
   );
 }
