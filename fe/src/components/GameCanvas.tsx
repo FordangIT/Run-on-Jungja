@@ -6,7 +6,7 @@ import Stick from "./Stick";
 import Tagger from "./Tagger";
 import Robot from "./Robot";
 import Item from "./Item";
-import SwipeController from "./SwipeController";
+import JoystickController from "./JoystickController";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -63,6 +63,38 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   const centerY = 150;
   const stickWidth = 20;
   const stickHeight = 40;
+
+  const moveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleJoystickMove = (direction: string) => {
+    const player = playerRef.current;
+    if (moveIntervalRef.current) clearInterval(moveIntervalRef.current);
+
+    moveIntervalRef.current = setInterval(() => {
+      if (player.isCaught) return;
+      switch (direction) {
+        case "FORWARD":
+          player.y -= player.speed;
+          break;
+        case "BACKWARD":
+          player.y += player.speed;
+          break;
+        case "LEFT":
+          player.x -= player.speed;
+          break;
+        case "RIGHT":
+          player.x += player.speed;
+          break;
+      }
+    }, 20); // 이동 반응 속도
+  };
+
+  const handleJoystickStop = () => {
+    if (moveIntervalRef.current) {
+      clearInterval(moveIntervalRef.current);
+      moveIntervalRef.current = null;
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -365,19 +397,24 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   }, [stickList, onScore, robots, itemList]);
 
   return (
-    <div className="relative w-[300px] h-[300px] mx-auto">
+    <div className="flex flex-col items-center">
+      {/* 캔버스 */}
       <canvas
         ref={canvasRef}
         width={300}
         height={300}
         className="rounded-full border-[6px] border-amber-700 shadow-lg w-[300px] h-[300px]"
       />
-      <SwipeController
-        onSwipeUp={() => (playerRef.current.y -= playerRef.current.speed)}
-        onSwipeDown={() => (playerRef.current.y += playerRef.current.speed)}
-        onSwipeLeft={() => (playerRef.current.x -= playerRef.current.speed)}
-        onSwipeRight={() => (playerRef.current.x += playerRef.current.speed)}
-      />
+
+      {/* 조이스틱 아래에 위치 */}
+      <div className="mt-4">
+        <JoystickController
+          onMove={handleJoystickMove}
+          onStop={handleJoystickStop}
+        />
+      </div>
+
+      {/* 게임 오버 화면 */}
       {isGameOver && (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-10">
           <h1 className="text-white text-2xl font-bold mb-4">Game Over</h1>
