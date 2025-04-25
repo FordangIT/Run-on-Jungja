@@ -18,12 +18,14 @@ export default function SwipeController({
     let startY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      e.preventDefault(); // ✅ 추가
       const touch = e.touches[0];
       startX = touch.clientX;
       startY = touch.clientY;
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
+      e.preventDefault(); // ✅ 추가
       const touch = e.changedTouches[0];
       const endX = touch.clientX;
       const endY = touch.clientY;
@@ -46,8 +48,8 @@ export default function SwipeController({
       }
     };
 
-    window.addEventListener("touchstart", handleTouchStart);
-    window.addEventListener("touchend", handleTouchEnd);
+    window.addEventListener("touchstart", handleTouchStart, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: false });
 
     return () => {
       window.removeEventListener("touchstart", handleTouchStart);
