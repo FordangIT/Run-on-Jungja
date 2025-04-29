@@ -7,13 +7,19 @@ import Tagger from "./Tagger";
 import Robot from "./Robot";
 import Item from "./Item";
 import JoystickController from "./JoystickController";
+import { getScoreMessage } from "@/utils/gameUtils";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
   onScore: (score: number) => void;
+  score: number;
 }
 
-export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
+export default function GameCanvas({
+  stickList,
+  onScore,
+  score
+}: GameCanvasProps) {
   const [isGameOver, setIsGameOver] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -418,11 +424,18 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       {isGameOver && (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-10">
           <h1 className="text-white text-2xl font-bold mb-4">Game Over</h1>
+
+          <div className="bg-orange-500 w-full h-8 flex items-center justify-center">
+            <div className="text-white font-semibold">
+              {getScoreMessage(score)}
+            </div>
+          </div>
+          <h5 className="text-green-500 font-semibold mb-4">score: {score}</h5>
           <button
             onClick={() => window.location.reload()}
             className="bg-white text-black px-4 py-2 rounded"
           >
-            다시 시작
+            restart
           </button>
         </div>
       )}
