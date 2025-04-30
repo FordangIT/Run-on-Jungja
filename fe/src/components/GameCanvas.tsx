@@ -7,13 +7,21 @@ import Tagger from "./Tagger";
 import Robot from "./Robot";
 import Item from "./Item";
 import JoystickController from "./JoystickController";
+import { getScoreMessage } from "@/utils/gameUtils";
+import { getTaggerSpeed } from "@/utils/gameUtils";
+import { getRobotSpeed } from "@/utils/gameUtils";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
   onScore: (score: number) => void;
+  score: number;
 }
 
-export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
+export default function GameCanvas({
+  stickList,
+  onScore,
+  score
+}: GameCanvasProps) {
   const [isGameOver, setIsGameOver] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -99,11 +107,22 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       if (Math.random() < 0.3) {
-        const randomX = Math.random() * 280 + 10;
-        const randomSpeed = Math.random() * 1 + 1.5;
+        const player = playerRef.current;
+        const spawnNearPlayer = Math.random() < 0.5; // 50% 확률로 가까운 위치
+        let randomX: number;
+
+        if (spawnNearPlayer) {
+          const offset = (Math.random() - 0.5) * 60; // -30~+30
+          randomX = Math.max(10, Math.min(290, player.x + offset));
+        } else {
+          randomX = Math.random() * 280 + 10;
+        }
+
+        const itemSpeed = player.speed;
+
         setItemList((prev) => [
           ...prev,
-          { id: itemIdRef.current++, x: randomX, y: -10, speed: randomSpeed }
+          { id: itemIdRef.current++, x: randomX, y: -10, speed: itemSpeed }
         ]);
       }
     }, 4000);
@@ -254,13 +273,15 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         const dx = player.x - item.x;
         const dy = player.y - item.y;
         if (Math.sqrt(dx * dx + dy * dy) < 15) {
-          player.speed += 0.5;
+          player.speed = Math.min(player.speed + 0.3, 4);
           setItemList((prev) => prev.filter((i) => i.id !== item.id));
         }
       });
 
       setRobots((prev) =>
         prev.map((robot) => {
+          // ✨ 점수 기반 속도 조절
+          robot.speed = getRobotSpeed(score);
           if (robot.isSticking) {
             const elapsed = timestamp - robot.stickTimer;
             if (elapsed > 5000) {
@@ -364,6 +385,9 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
         }
       }
 
+      // ✨ 점수에 따라 속도 조절
+      tagger.speed = getTaggerSpeed(score);
+
       if (targetX === null || targetY === null) {
         findNewTarget();
       } else {
@@ -418,11 +442,18 @@ export default function GameCanvas({ stickList, onScore }: GameCanvasProps) {
       {isGameOver && (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex flex-col items-center justify-center z-10">
           <h1 className="text-white text-2xl font-bold mb-4">Game Over</h1>
+
+          <div className="bg-orange-500 w-full h-8 flex items-center justify-center">
+            <div className="text-white font-semibold">
+              {getScoreMessage(score)}
+            </div>
+          </div>
+          <h5 className="text-green-500 font-semibold mb-4">score: {score}</h5>
           <button
             onClick={() => window.location.reload()}
             className="bg-white text-black px-4 py-2 rounded"
           >
-            다시 시작
+            restart
           </button>
         </div>
       )}

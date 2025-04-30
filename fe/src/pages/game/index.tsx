@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState, useRef } from "react";
 import GameCanvas from "@/components/GameCanvas";
+import { getBackgroundColor } from "@/utils/gameUtils";
 
 export default function Game() {
   const searchParams = useSearchParams();
@@ -32,7 +33,11 @@ export default function Game() {
   );
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-screen">
+    <div
+      className={`flex flex-col items-center justify-center w-full h-screen transition-colors duration-500 ${getBackgroundColor(
+        score
+      )}`}
+    >
       <p className="text-lg font-bold mb-2">Show Your Moves, {nickname}!</p>
       <p className="text-md mb-2">Score: {score}</p>
       <GameCanvas
@@ -40,6 +45,7 @@ export default function Game() {
         onScore={(s) =>
           setScore((prev) => (typeof prev === "number" ? prev + s : s))
         }
+        score={score}
       />
     </div>
   );
