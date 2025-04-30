@@ -273,7 +273,7 @@ export default function GameCanvas({
         const dx = player.x - item.x;
         const dy = player.y - item.y;
         if (Math.sqrt(dx * dx + dy * dy) < 15) {
-          player.speed += 0.5;
+          player.speed = Math.min(player.speed + 0.3, 4);
           setItemList((prev) => prev.filter((i) => i.id !== item.id));
         }
       });
