@@ -20,3 +20,21 @@ export function getBackgroundColor(score: number) {
   if (score <= 350) return "bg-emerald-300"; // 거의 신급
   return "bg-lime-700"; // 360점 이상: 레전드
 }
+
+export const getTaggerSpeed = (score: number): number => {
+  if (score <= 50) return 1.2;
+  if (score <= 100) return 1.5;
+  if (score <= 150) return 1.8;
+  if (score <= 200) return 2.1;
+  if (score <= 250) return 2.4;
+  if (score <= 300) return 2.7;
+  if (score <= 350) return 3.0;
+  return 3.3; // 350 초과
+};
+
+export const getRobotSpeed = (score: number): number => {
+  if (score <= 100) return 1.5;
+  if (score <= 200) return 1.8;
+  if (score <= 300) return 2.0;
+  return 2.2;
+};

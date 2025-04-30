@@ -8,6 +8,8 @@ import Robot from "./Robot";
 import Item from "./Item";
 import JoystickController from "./JoystickController";
 import { getScoreMessage } from "@/utils/gameUtils";
+import { getTaggerSpeed } from "@/utils/gameUtils";
+import { getRobotSpeed } from "@/utils/gameUtils";
 
 interface GameCanvasProps {
   stickList: { id: number; x: number; y: number; angle: number }[];
@@ -267,6 +269,8 @@ export default function GameCanvas({
 
       setRobots((prev) =>
         prev.map((robot) => {
+          // ✨ 점수 기반 속도 조절
+          robot.speed = getRobotSpeed(score);
           if (robot.isSticking) {
             const elapsed = timestamp - robot.stickTimer;
             if (elapsed > 5000) {
@@ -369,6 +373,9 @@ export default function GameCanvas({
           targetY = targetRobot.y;
         }
       }
+
+      // ✨ 점수에 따라 속도 조절
+      tagger.speed = getTaggerSpeed(score);
 
       if (targetX === null || targetY === null) {
         findNewTarget();
