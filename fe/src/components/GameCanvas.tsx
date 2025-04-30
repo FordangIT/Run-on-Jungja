@@ -107,11 +107,22 @@ export default function GameCanvas({
   useEffect(() => {
     const interval = setInterval(() => {
       if (Math.random() < 0.3) {
-        const randomX = Math.random() * 280 + 10;
-        const randomSpeed = Math.random() * 1 + 1.5;
+        const player = playerRef.current;
+        const spawnNearPlayer = Math.random() < 0.5; // 50% 확률로 가까운 위치
+        let randomX: number;
+
+        if (spawnNearPlayer) {
+          const offset = (Math.random() - 0.5) * 60; // -30~+30
+          randomX = Math.max(10, Math.min(290, player.x + offset));
+        } else {
+          randomX = Math.random() * 280 + 10;
+        }
+
+        const itemSpeed = player.speed;
+
         setItemList((prev) => [
           ...prev,
-          { id: itemIdRef.current++, x: randomX, y: -10, speed: randomSpeed }
+          { id: itemIdRef.current++, x: randomX, y: -10, speed: itemSpeed }
         ]);
       }
     }, 4000);
